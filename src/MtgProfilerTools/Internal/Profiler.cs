@@ -30,14 +30,14 @@ namespace MtgProfilerTools.Internal
             {
                 try
                 {
-                    string directory = Path.GetDirectoryName(dataDir);
-                    if (!Directory.Exists(directory))
+                    if (!Directory.Exists(dataDir))
                     {
-                        Directory.CreateDirectory(directory);
+                        Directory.CreateDirectory(dataDir);
                     }
 
                     string fileName = $"mtg_profile_data_{Environment.TickCount}.bin";
-                    OutpuStream = new FileStream(dataDir, FileMode.Create, FileAccess.ReadWrite);
+                    string outputPath = Path.Combine(dataDir, fileName);
+                    OutpuStream = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite);
                     WriterThread = new WriterThread(OutpuStream);
                     WriterThread.Run();
                     IsEnabled = true;
@@ -54,7 +54,7 @@ namespace MtgProfilerTools.Internal
             long parentId = ActivityIds.Count > 0 ? ActivityIds.Last.Value : -1L;
             long id = Interlocked.Increment(ref EventId);
             ActivityIds.AddLast(id);
-            var profileEvent = new ProfileEvent(Thread.CurrentThread.ManagedThreadId, parentId, id, Stopwatch.GetTimestamp(), ProfileEventType.StartMethod, name);
+            var profileEvent = new RawProfileEvent(Thread.CurrentThread.ManagedThreadId, parentId, id, Stopwatch.GetTimestamp(), ProfileEventType.StartMethod, name);
             WriterThread.Enqueue(profileEvent);
         }
 
@@ -75,7 +75,7 @@ namespace MtgProfilerTools.Internal
                 }
             }
 
-            var profileEvent = new ProfileEvent(Thread.CurrentThread.ManagedThreadId, parentId, id, Stopwatch.GetTimestamp(), ProfileEventType.EndMethod, string.Empty);
+            var profileEvent = new RawProfileEvent(Thread.CurrentThread.ManagedThreadId, parentId, id, Stopwatch.GetTimestamp(), ProfileEventType.EndMethod, string.Empty);
             WriterThread.Enqueue(profileEvent);
         }
     }

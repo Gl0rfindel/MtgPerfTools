@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -9,7 +10,7 @@ namespace MtgProfilerTools
     internal sealed class WriterThread
     {
         private readonly object _lock;
-        private readonly Queue<ProfileEvent> _entries = new Queue<ProfileEvent>();
+        private readonly Queue<RawProfileEvent> _entries = new Queue<RawProfileEvent>();
         private readonly Thread _thread;
         private readonly Stream _outputStream;
 
@@ -37,7 +38,7 @@ namespace MtgProfilerTools
             _thread.Start(data);
         }
 
-        public void Enqueue(ProfileEvent profileEvent)
+        public void Enqueue(in RawProfileEvent profileEvent)
         {
             lock (_lock)
             {
@@ -52,7 +53,9 @@ namespace MtgProfilerTools
             object locker = threadData.Lock;
             var queue = threadData.Queue;
             var output = threadData.OutputStream;
-            var buffer = new byte[2048];
+            WriteDataHeader(output);
+            output.Flush();
+            var writer = new BinaryWriter(output, Encoding.UTF8);
             while (true)
             {
                 lock (locker)
@@ -67,8 +70,15 @@ namespace MtgProfilerTools
                         try
                         {
                             var entry = queue.Dequeue();
-                            int dataCount = entry.ToBytes(buffer, 0);
-                            output.Write(buffer, 0, dataCount);
+
+                            writer.Write(entry.ThreadId);
+                            writer.Write(entry.ParentId);
+                            writer.Write(entry.ActivityId);
+                            writer.Write(entry.Timestamp);
+                            writer.Write((int)entry.EventType);
+                            writer.Write(entry.Name);
+
+                            writer.Flush();
                         }
                         catch { }
                     }
@@ -76,11 +86,25 @@ namespace MtgProfilerTools
             }
         }
 
+        private static void WriteDataHeader(Stream stream)
+        {
+            const int HeaderSize = 64;
+            const int Version = 1;
+            var header = new byte[HeaderSize];
+            Encoding.UTF8.GetBytes("MTG!", 0, 4, header, 0);
+            int offset = 4;
+            offset = BitOperations.ToBytes(Version, header, offset);
+            offset = BitOperations.ToBytes(DateTime.UtcNow.Ticks, header, offset);
+            offset = BitOperations.ToBytes(Stopwatch.Frequency, header, offset);
+            offset = BitOperations.ToBytes(Stopwatch.GetTimestamp(), header, offset);
+            stream.Write(header, 0, header.Length);
+        }
+
         private class ThreadData
         {
             public object Lock;
 
-            public Queue<ProfileEvent> Queue;
+            public Queue<RawProfileEvent> Queue;
 
             public Stream OutputStream;
         }

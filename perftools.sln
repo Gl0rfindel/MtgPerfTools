@@ -11,7 +11,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MtgProfilerTools", "src\Mtg
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{B58B88D2-66CD-4780-8161-B9280A4766A1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MtgProfilerTools.Test", "test\MtgProfilerTools.Test\MtgProfilerTools.Test.csproj", "{8A21DD1F-DD80-4049-8B45-A20FCBA7C139}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MtgProfilerTools.Test", "test\MtgProfilerTools.Test\MtgProfilerTools.Test.csproj", "{8A21DD1F-DD80-4049-8B45-A20FCBA7C139}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MtgProfileAnalyzer", "src\MtgProfileAnalyzer\MtgProfileAnalyzer.csproj", "{382F3C70-B375-4BFA-817C-594D94A01741}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,6 +61,18 @@ Global
 		{8A21DD1F-DD80-4049-8B45-A20FCBA7C139}.Release|x64.Build.0 = Release|Any CPU
 		{8A21DD1F-DD80-4049-8B45-A20FCBA7C139}.Release|x86.ActiveCfg = Release|Any CPU
 		{8A21DD1F-DD80-4049-8B45-A20FCBA7C139}.Release|x86.Build.0 = Release|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Debug|x64.Build.0 = Debug|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Debug|x86.Build.0 = Debug|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Release|Any CPU.Build.0 = Release|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Release|x64.ActiveCfg = Release|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Release|x64.Build.0 = Release|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Release|x86.ActiveCfg = Release|Any CPU
+		{382F3C70-B375-4BFA-817C-594D94A01741}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -67,6 +81,7 @@ Global
 		{B34C9A4D-402E-4729-A6DD-E67D7438AA75} = {EE64BF70-5EF2-45CA-8EC5-0F11C4AE15ED}
 		{CE5FDF23-A129-4AD4-B787-C4EE12E083D7} = {EE64BF70-5EF2-45CA-8EC5-0F11C4AE15ED}
 		{8A21DD1F-DD80-4049-8B45-A20FCBA7C139} = {B58B88D2-66CD-4780-8161-B9280A4766A1}
+		{382F3C70-B375-4BFA-817C-594D94A01741} = {EE64BF70-5EF2-45CA-8EC5-0F11C4AE15ED}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7F28BEBE-8172-4636-B609-AEB6E5345741}

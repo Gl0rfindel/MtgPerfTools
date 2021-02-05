@@ -21,16 +21,20 @@ namespace MtgInstrumenter
             // TODO: Generate mods txt
 
             var sourceAssemblies = new List<string>();
+            var directories = new HashSet<string>();
             foreach (var arg in args)
             {
                 if (arg.EndsWith(".dll") && File.Exists(arg))
                 {
                     sourceAssemblies.Add(arg);
+                    string dir = Path.GetDirectoryName(Path.GetFullPath(arg));
+                    directories.Add(dir);
                 }
                 else if (Directory.Exists(arg))
                 {
                     var files = Directory.GetFiles(arg, "*.dll");
                     sourceAssemblies.AddRange(files);
+                    directories.Add(arg);
                 }
             }
 
@@ -41,14 +45,27 @@ namespace MtgInstrumenter
             }
 
             string toolsAsmPath = LocateToolsAssembly();
-            var toolsAsm = AssemblyDefinition.ReadAssembly(toolsAsmPath);
+            var asmResolver = new DefaultAssemblyResolver();
+            foreach (var dir in directories)
+            {
+                asmResolver.AddSearchDirectory(dir);
+            }
+
+            asmResolver.AddSearchDirectory(@"D:\Steam\steamapps\common\Enter the Gungeon\EtG_Data\Managed");
+
+            var readerParams = new ReaderParameters()
+            {
+                AssemblyResolver = asmResolver
+            };
+
+            var toolsAsm = AssemblyDefinition.ReadAssembly(toolsAsmPath, readerParams);
             string outputDirectory = AppContext.BaseDirectory;
             var toolsContext = new ToolsAssemblyContext(toolsAsm);
 
             foreach (var sourceAssemblyFile in sourceAssemblies)
             {
                 Console.WriteLine($"Processing {sourceAssemblyFile}");
-                ProcessFile(sourceAssemblyFile, outputDirectory, toolsContext);
+                ProcessFile(sourceAssemblyFile, outputDirectory, readerParams, toolsContext);
                 Console.WriteLine($"Done with {sourceAssemblyFile}");
             }
         }
@@ -79,9 +96,9 @@ namespace MtgInstrumenter
             throw new InvalidOperationException("Cannot find MtgProfilerTools.dll");
         }
 
-        private static void ProcessFile(string inputDll, string outputDirectory, ToolsAssemblyContext toolsContext)
+        private static void ProcessFile(string inputDll, string outputDirectory, ReaderParameters readerParams, ToolsAssemblyContext toolsContext)
         {
-            var asmDefinition = AssemblyDefinition.ReadAssembly(inputDll);
+            var asmDefinition = AssemblyDefinition.ReadAssembly(inputDll, readerParams);
             foreach (var module in asmDefinition.Modules)
             {
                 ProcessModule(module, toolsContext);

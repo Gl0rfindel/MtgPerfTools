@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- This is set to net35 so that every thing work with our target mono runtime. -->
+    <TargetFramework>net35</TargetFramework>
+  </PropertyGroup>
+
+</Project>

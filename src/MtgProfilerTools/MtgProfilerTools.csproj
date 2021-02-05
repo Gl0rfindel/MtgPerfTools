@@ -1,8 +1,15 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <!-- This is set to net35 so that every thing work with our target mono runtime. -->
     <TargetFramework>net35</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>MtgProfilerTools.Test</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 
 </Project>

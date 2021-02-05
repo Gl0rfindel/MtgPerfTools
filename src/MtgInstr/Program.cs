@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Mono.Cecil.Rocks;
 
 namespace MtgInstrumenter
 {
@@ -12,7 +14,7 @@ namespace MtgInstrumenter
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Give list of directories or dlls to modify");
+                Console.WriteLine("Give a list of directories or dlls to modify");
             }
 
             // TODO: Read zips.
@@ -34,17 +36,47 @@ namespace MtgInstrumenter
 
             if (sourceAssemblies.Count == 0)
             {
+                Console.WriteLine("No assemblies found");
                 return;
             }
 
-            var toolsAsm = AssemblyDefinition.ReadAssembly("MtgProfilerTools.dll");
+            string toolsAsmPath = LocateToolsAssembly();
+            var toolsAsm = AssemblyDefinition.ReadAssembly(toolsAsmPath);
             string outputDirectory = AppContext.BaseDirectory;
             var toolsContext = new ToolsAssemblyContext(toolsAsm);
 
             foreach (var sourceAssemblyFile in sourceAssemblies)
             {
+                Console.WriteLine($"Processing {sourceAssemblyFile}");
                 ProcessFile(sourceAssemblyFile, outputDirectory, toolsContext);
+                Console.WriteLine($"Done with {sourceAssemblyFile}");
             }
+        }
+
+        private static string LocateToolsAssembly()
+        {
+            string profileToolsPath = Path.Combine(AppContext.BaseDirectory, "MtgProfilerTools.dll");
+            if (File.Exists(profileToolsPath))
+            {
+                return profileToolsPath;
+            }
+
+#if DEBUG
+            DirectoryInfo current = new DirectoryInfo(AppContext.BaseDirectory);
+            while ((current = current.Parent) != null)
+            {
+                string candidate = Path.Combine(current.FullName, "MtgProfilerTools");
+                if (Directory.Exists(candidate))
+                {
+                    candidate = Path.Combine(candidate, "bin", "Debug", "net35", "MtgProfilerTools.dll");
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+#endif
+            throw new InvalidOperationException("Cannot find MtgProfilerTools.dll");
         }
 
         private static void ProcessFile(string inputDll, string outputDirectory, ToolsAssemblyContext toolsContext)
@@ -61,18 +93,93 @@ namespace MtgInstrumenter
 
         private static void ProcessModule(ModuleDefinition moduleDefinition, ToolsAssemblyContext toolsContext)
         {
-            moduleDefinition.AssemblyReferences.Add(new AssemblyNameReference(toolsContext.AssemblyName.Name, toolsContext.AssemblyName.Version));
+            var enterRef = moduleDefinition.ImportReference(toolsContext.EnterMethodDefinition);
+            var exitRef = moduleDefinition.ImportReference(toolsContext.ExitMethodDefinition);
 
             foreach (var typeDefinition in moduleDefinition.Types)
             {
                 foreach (var method in typeDefinition.Methods)
                 {
-                    var instr = Instruction.Create(OpCodes.Call, toolsContext.EnterMethodDefinition);
-                    method.Body.Instructions.Insert(0, instr);
+                    if (!method.HasBody)
+                        continue;
 
-                    instr = Instruction.Create(OpCodes.Ldstr, method.Name);
-                    method.Body.Instructions.Insert(0, instr);
+                    ProcessMethod(method, enterRef, exitRef);
                 }
+            }
+        }
+
+        private static void ProcessMethod(MethodDefinition method, MethodReference enterRef, MethodReference exitRef)
+        {
+            method.Body.SimplifyMacros();
+            var il = method.Body.GetILProcessor();
+
+            var firstInstruction = method.Body.Instructions.First();
+            var loadstr = il.Create(OpCodes.Ldstr, method.FullName);
+            il.InsertBefore(firstInstruction, loadstr);
+            il.InsertAfter(loadstr, il.Create(OpCodes.Call, enterRef));
+
+            var returnInstruction = FixReturns(method);
+
+            var beforeReturn = Instruction.Create(OpCodes.Nop);
+            il.InsertBefore(returnInstruction, beforeReturn);
+
+            il.InsertBefore(returnInstruction, il.Create(OpCodes.Call, exitRef));
+
+            il.InsertBefore(returnInstruction, Instruction.Create(OpCodes.Endfinally));
+
+            var handler = new ExceptionHandler(ExceptionHandlerType.Finally)
+            {
+                TryStart = firstInstruction,
+                TryEnd = beforeReturn,
+                HandlerStart = beforeReturn,
+                HandlerEnd = returnInstruction,
+            };
+
+            method.Body.ExceptionHandlers.Add(handler);
+            method.Body.InitLocals = true;
+            method.Body.OptimizeMacros();
+        }
+
+        // see code in https://github.com/Fody/MethodTimer/blob/master/MethodTimer.Fody/MethodProcessor.cs
+        // and https://stackoverflow.com/questions/12769699/mono-cecil-injecting-try-finally
+        private static Instruction FixReturns(MethodDefinition method)
+        {
+            var body = method.Body;
+            var instructions = method.Body.Instructions;
+            if (method.ReturnType == method.Module.TypeSystem.Void)
+            {
+                var lastRet = Instruction.Create(OpCodes.Ret);
+
+                foreach (var instruction in instructions)
+                {
+                    if (instruction.OpCode == OpCodes.Ret)
+                    {
+                        instruction.OpCode = OpCodes.Leave;
+                        instruction.Operand = lastRet;
+                    }
+                }
+                instructions.Add(lastRet);
+                return lastRet;
+            }
+            else
+            {
+                var returnVariable = new VariableDefinition(method.ReturnType);
+                body.Variables.Add(returnVariable);
+                var lastLd = Instruction.Create(OpCodes.Ldloc, returnVariable);
+                for (var index = 0; index < instructions.Count; index++)
+                {
+                    var instruction = instructions[index];
+                    if (instruction.OpCode == OpCodes.Ret)
+                    {
+                        instruction.OpCode = OpCodes.Stloc;
+                        instruction.Operand = returnVariable;
+                        index++;
+                        instructions.Insert(index, Instruction.Create(OpCodes.Leave, lastLd));
+                    }
+                }
+                instructions.Add(lastLd);
+                instructions.Add(Instruction.Create(OpCodes.Ret));
+                return lastLd;
             }
         }
     }

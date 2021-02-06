@@ -1,0 +1,8 @@
+need scripts to handle instrumenting several assemblies, including Assembly-CSharp.
+Don't want everything instrumented there but interesting types/methods are
+RuntimeAtlasPacker
+RuntimeAtlasPage
+ETGMod
+ETGMod.Assets
+
+also need to handle instrumenting zips

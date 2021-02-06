@@ -1,82 +1,56 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MtgProfileAnalyzer
 {
     internal class ProfileEventCollectionBuilder
     {
-        private readonly Dictionary<long, ProfileEvent> _profileEvents;
-        private StopwatchCalculator _stopwatchCalc;
+        private readonly List<ProfileEvent> _profileEvents;
+        private readonly Dictionary<long, string> _eventNames;
+        private long _minTs;
 
-        public ProfileEventCollectionBuilder()
+        public ProfileEventCollectionBuilder(SessionData session)
         {
-            _profileEvents = new Dictionary<long, ProfileEvent>();
+            _profileEvents = new List<ProfileEvent>();
+            _eventNames = new Dictionary<long, string>();
+            Session = session;
+            _minTs = long.MaxValue;
         }
 
-        public long StopwatchFrequency
-        {
-            get => _stopwatchCalc?.Frequency ?? 0;
-            set
-            {
-                if (value > 0)
-                {
-                    _stopwatchCalc = new StopwatchCalculator(value);
-                }
-                else
-                {
-                    _stopwatchCalc = null;
-                }
-            }
-        }
+        public SessionData Session { get; }
 
         public void Add(ProfileEvent @event)
         {
-            _profileEvents.Add(@event.Id, @event);
-        }
-
-        public void AddStart(long timestamp, long id, int threadId, long parentId, string name)
-        {
-            var profEvent = new ProfileEvent()
+            _profileEvents.Add(@event);
+            if (!string.IsNullOrEmpty(@event.Name))
             {
-                ThreadId = threadId,
-                ParentId = parentId,
-                Id = id,
-                Name = name,
-                Start = timestamp
-            };
-
-            _profileEvents.Add(id, profEvent);
-        }
-
-        public bool SetEnd(long timestamp, long id)
-        {
-            if (_profileEvents.TryGetValue(id, out var profEvent))
-            {
-                profEvent.End = timestamp;
-                return true;
+                _eventNames[@event.Id] = @event.Name;
             }
 
-            return false;
+            if (@event.RawTimestamp < _minTs)
+            {
+                _minTs = @event.RawTimestamp;
+            }
         }
 
         public ProfileEventCollection Build()
         {
-            foreach (var (id, evt) in _profileEvents)
+            var calc = new StopwatchCalculator(Session.StopwatchFrequency);
+            var actualMin = Math.Min(Session.InitialTimestamp, _minTs);
+
+            foreach (var evt in _profileEvents)
             {
-                if (evt.Parent != null)
-                    continue;
-
-                if (_profileEvents.TryGetValue(evt.ParentId, out var parent))
+                evt.Offset = calc.ToTimeSpan(actualMin, evt.RawTimestamp);
+                if (string.IsNullOrEmpty(evt.Name))
                 {
-                    evt.Parent = parent;
-                }
-
-                if (_stopwatchCalc != null && evt.End > 0 && evt.Start > 0)
-                {
-                    evt.Duration = _stopwatchCalc.ToTimeSpan(evt.Start, evt.End);
+                    if (_eventNames.TryGetValue(evt.Id, out string name))
+                    {
+                        evt.Name = name;
+                    }
                 }
             }
 
-            var items = new ProfileEventCollection(_profileEvents.Values);
+            var items = new ProfileEventCollection(Session, _profileEvents);
             return items;
         }
     }

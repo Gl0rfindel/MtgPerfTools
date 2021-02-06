@@ -8,6 +8,8 @@ namespace MtgProfileAnalyzer
         {
         }
 
+        public ProfileEventType EventType { get; set; }
+
         public int ThreadId { get; set; }
 
         public long Id { get; set; }
@@ -16,12 +18,8 @@ namespace MtgProfileAnalyzer
 
         public string Name { get; set; }
 
-        public long Start { get; set; }
+        public long RawTimestamp { get; set; }
 
-        public long End { get; set; }
-
-        public TimeSpan Duration { get; set; }
-
-        public ProfileEvent Parent { get; set; }
+        public TimeSpan Offset { get; set; }
     }
 }

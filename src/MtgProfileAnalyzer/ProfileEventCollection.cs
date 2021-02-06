@@ -8,8 +8,10 @@ namespace MtgProfileAnalyzer
         private Dictionary<int, List<ProfileEvent>> _byThread;
         private List<ThreadSummaryData> _threadSummaries;
 
-        public ProfileEventCollection(IEnumerable<ProfileEvent> events)
+        public ProfileEventCollection(SessionData session, IEnumerable<ProfileEvent> events)
         {
+            Session = session ?? throw new ArgumentNullException(nameof(session));
+
             _byThread = new Dictionary<int, List<ProfileEvent>>();
 
             foreach (var @event in events)
@@ -37,14 +39,13 @@ namespace MtgProfileAnalyzer
 
             foreach (var (_, list) in _byThread)
             {
-                list.Sort((l, r) => l.Start.CompareTo(r.Start));
+                list.Sort((l, r) => l.RawTimestamp.CompareTo(r.RawTimestamp));
             }
         }
 
-        public IReadOnlyList<ThreadSummaryData> GetThreadData()
-        {
-            return _threadSummaries;
-        }
+        public SessionData Session { get; }
+
+        public IReadOnlyList<ThreadSummaryData> ThreadSummaries => _threadSummaries;
 
         public IEnumerable<ProfileEvent> GetEvents(int threadId)
         {

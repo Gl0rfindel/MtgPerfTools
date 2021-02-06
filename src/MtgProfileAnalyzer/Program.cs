@@ -47,19 +47,24 @@ namespace MtgProfileAnalyzer
 
             app.Command("watch", cmd =>
             {
-                var dirARg = cmd.Argument("directory", "A directory to watch for new files to process").IsRequired();
+                var dirARg = cmd.Argument("directory", "A directory to watch for new files to process");
 
                 cmd.OnExecuteAsync(async ct =>
                 {
-                    string directory = dirARg.Value;
-                    if (!Directory.Exists(directory))
+                    string watchDirectory = dirARg.Value ?? Environment.GetEnvironmentVariable("MTG_PROFILER_DATA_DIR");
+                    if (string.IsNullOrEmpty(watchDirectory))
                     {
-                        Console.Error.WriteLine($"Directory does not exist {directory}");
+                        Console.Error.WriteLine("Watch dir was not specified or found in environment variable MTG_PROFILER_DATA_DIR");
+                        return 1;
+                    }
+                    else if (!Directory.Exists(watchDirectory))
+                    {
+                        Console.Error.WriteLine($"Directory does not exist {watchDirectory}");
                         return 1;
                     }
 
-                    Console.WriteLine($"Watching {directory} for changes...");
-                    using var watch = new FileSystemWatcher(directory, "*.bin");
+                    Console.WriteLine($"Watching {watchDirectory} for changes...");
+                    using var watch = new FileSystemWatcher(watchDirectory, "*.bin");
 
                     var pending = new Queue<(string filePath, int retry)>();
                     while (true)
@@ -84,7 +89,7 @@ namespace MtgProfileAnalyzer
                                 continue;
                             }
 
-                            inputFilePath = Path.Combine(directory, info.Name);
+                            inputFilePath = Path.Combine(watchDirectory, info.Name);
                             retry = 0;
                         }
 
@@ -104,7 +109,7 @@ namespace MtgProfileAnalyzer
 
                         string name = Path.GetFileName(inputFilePath);
                         Console.WriteLine($"Analyzing {name}");
-                        await AnalyzeFile(inputFilePath);
+                        string outputFile = await AnalyzeFile(inputFilePath);
                     }
                 });
             });
@@ -112,7 +117,7 @@ namespace MtgProfileAnalyzer
             return await app.ExecuteAsync(args);
         }
 
-        private static async Task AnalyzeFile(string inputFilePath)
+        private static async Task<string> AnalyzeFile(string inputFilePath)
         {
             using var inputFs = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read);
             using var reader = new BinaryReader(inputFs);
@@ -187,6 +192,8 @@ namespace MtgProfileAnalyzer
             });
 
             Console.WriteLine($"Wrote to {outputFileName}");
+
+            return outputFile;
         }
     }
 }

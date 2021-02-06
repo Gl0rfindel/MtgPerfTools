@@ -35,7 +35,8 @@ namespace MtgProfilerTools.Internal
                         Directory.CreateDirectory(dataDir);
                     }
 
-                    string fileName = $"mtg_profile_data_{Environment.TickCount}.bin";
+                    string ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                    string fileName = $"mtg_profile_data_{ts}.bin";
                     string outputPath = Path.Combine(dataDir, fileName);
                     OutpuStream = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite);
                     WriterThread = new WriterThread(OutpuStream);

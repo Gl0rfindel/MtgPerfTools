@@ -9,22 +9,41 @@ namespace MtgProfileAnalyzer
 {
     class Program
     {
-        async static Task Main(string[] args)
+        async static Task<int> Main(string[] args)
         {
             if (args.Length == 0)
             {
-                Console.WriteLine("Specify an input file");
-                return;
+                Console.Error.WriteLine("Specify an input file");
+                return 1;
             }
 
-            string path = args[0];
-            if (!File.Exists(path))
+            int exitCode = 0;
+            foreach (var arg in args)
             {
-                Console.WriteLine("File does not exist");
-                return;
+                string filePath = arg;
+                if (!File.Exists(filePath))
+                {
+                    exitCode = 1;
+                    continue;
+                }
+
+                try
+                {
+                    await AnalyzeFile(filePath);
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine($"Error processing file '{filePath}': {e}");
+                    exitCode = 1;
+                }
             }
 
-            using var inputFs = new FileStream(path, FileMode.Open, FileAccess.Read);
+            return exitCode;
+        }
+
+        private static async Task AnalyzeFile(string inputFilePath)
+        {
+            using var inputFs = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read);
             using var reader = new BinaryReader(inputFs);
             var header = reader.ReadBytes(64);
             var mtg = header[0..4]; // TODO: Validate
@@ -35,7 +54,7 @@ namespace MtgProfileAnalyzer
 
             var session = new SessionData()
             {
-                File = path,
+                File = inputFilePath,
                 Timestamp = new DateTime(startDateTimeTicks),
                 StopwatchFrequency = frequency,
                 InitialTimestamp = startTs,
@@ -71,11 +90,6 @@ namespace MtgProfileAnalyzer
                 {
                     break;
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine($"Error during read: {e}");
-                    break;
-                }
             }
 
             Console.WriteLine($"Read {records} records.");
@@ -84,9 +98,12 @@ namespace MtgProfileAnalyzer
             var ssFormat = collection.ToSpeedscopeFormat();
 
             string outputFileName = ssFormat.Name ?? "data";
+            outputFileName = $"{outputFileName}.speedscope.json";
 
             // note extension is a required part which is not in the spec
-            string outputFile = Path.Combine(AppContext.BaseDirectory, $"{outputFileName}.speedscope.json");
+            string outputDir = Path.GetDirectoryName(Path.GetFullPath(inputFilePath));
+
+            string outputFile = Path.Combine(outputDir, outputFileName);
             using var dataFile = File.Create(outputFile);
             await JsonSerializer.SerializeAsync(dataFile, ssFormat, new JsonSerializerOptions()
             {
@@ -97,7 +114,8 @@ namespace MtgProfileAnalyzer
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
-            Console.WriteLine($"Wrote to {outputFile}");
+
+            Console.WriteLine($"Wrote to {outputFileName}");
         }
     }
 }

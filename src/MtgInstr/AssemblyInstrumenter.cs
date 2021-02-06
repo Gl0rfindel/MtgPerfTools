@@ -57,7 +57,7 @@ namespace MtgInstrumenter
             var enterRef = moduleDefinition.ImportReference(ToolsContext.EnterMethodDefinition);
             var exitRef = moduleDefinition.ImportReference(ToolsContext.ExitMethodDefinition);
 
-            foreach (var typeDefinition in moduleDefinition.Types)
+            foreach (var typeDefinition in moduleDefinition.GetTypes())
             {
                 if (_excludeTypes.Count > 0)
                 {
@@ -95,6 +95,7 @@ namespace MtgInstrumenter
                     }
                 }
 
+                Console.WriteLine($"Processing {typeDefinition.FullName}");
                 foreach (var method in typeDefinition.Methods)
                 {
                     if (!method.HasBody)

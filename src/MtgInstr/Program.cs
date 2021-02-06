@@ -19,7 +19,7 @@ namespace MtgInstrumenter
             //var incAsmOption = cli.Option("-ia|--includeAsm <REGEX>", "", CommandOptionType.MultipleValue);
             var exTypeRegexOption = cli.Option("-xt|--excludeType <REGEX>", "A regular expression used to exclude types for instrumentation.", CommandOptionType.MultipleValue);
             var incTypeRegexOption = cli.Option("-it|--includeType <REGEX>", "A regular expression used to include types for instrumentation.", CommandOptionType.MultipleValue);
-
+            
             cli.OnExecute(() =>
             {
                 // TODO: Read zips.

@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace MtgProfileAnalyzer
 {
     class Program
     {
-        static void Main(string[] args)
+        async static Task Main(string[] args)
         {
             if (args.Length == 0)
             {
@@ -21,8 +23,8 @@ namespace MtgProfileAnalyzer
                 return;
             }
 
-            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
-            using var reader = new BinaryReader(fs);
+            using var inputFs = new FileStream(path, FileMode.Open, FileAccess.Read);
+            using var reader = new BinaryReader(inputFs);
             var header = reader.ReadBytes(64);
             var mtg = header[0..4];
             var version = header[4..8];
@@ -33,6 +35,8 @@ namespace MtgProfileAnalyzer
             var builder = new ProfileEventCollectionBuilder();
             builder.StopwatchFrequency = frequency;
             int records = 0;
+            int startRecs = 0;
+            int endRecs = 0;
             while (true)
             {
                 try
@@ -47,10 +51,12 @@ namespace MtgProfileAnalyzer
                     if (eventType == ProfileEventType.StartMethod)
                     {
                         builder.AddStart(ts, id, threadId, parentId, name);
+                        startRecs++;
                     }
                     else if (eventType == ProfileEventType.EndMethod)
                     {
-                        builder.SetEnd(id, ts);
+                        builder.SetEnd(ts, id);
+                        endRecs++;
                     }
                     else
                     {
@@ -65,145 +71,73 @@ namespace MtgProfileAnalyzer
                 }
             }
 
-            Console.WriteLine($"Read {records} records");
+            Console.WriteLine($"Read {records} records.");
+            if (startRecs != endRecs)
+            {
+                Console.WriteLine($"Start: {startRecs}, End: {endRecs}");
+            }
+
             var collection = builder.Build();
             var threadData = collection.GetThreadData();
+            ThreadSummaryData max = null;
             foreach (var thread in threadData)
             {
+                if (max == null || thread.EventCount > max.EventCount)
+                {
+                    max = thread;
+                }
+
                 Console.WriteLine($"ThreadId: {thread.Id}, Events: {thread.EventCount}");
             }
-        }
-    }
 
-    class ProfileEventCollection
-    {
-        private Dictionary<int, List<ProfileEvent>> _byThread;
-        private List<ThreadSummaryData> _threadSummaries;
-
-        public ProfileEventCollection(IEnumerable<ProfileEvent> events)
-        {
-            _byThread = new Dictionary<int, List<ProfileEvent>>();
-
-            foreach (var @event in events)
+            if (max != null)
             {
-                if (!_byThread.TryGetValue(@event.ThreadId, out var list))
-                {
-                    list = new List<ProfileEvent>();
-                    _byThread.Add(@event.ThreadId, list);
-                }
+                var thread = max;
+                Console.WriteLine($"Using {thread.Id} since it has the most events");
 
-                list.Add(@event);
-            }
-
-            _threadSummaries = new List<ThreadSummaryData>();
-            foreach (var (tid, list) in _byThread)
-            {
-                var summary = new ThreadSummaryData()
+                var root = new D3FlameObject()
                 {
-                    Id = tid,
-                    EventCount = list.Count
+                    Name = "root",
                 };
 
-                _threadSummaries.Add(summary);
-            }
-        }
-
-        public IReadOnlyList<ThreadSummaryData> GetThreadData()
-        {
-            return _threadSummaries;
-        }
-    }
-
-    class ProfileEventCollectionBuilder
-    {
-        private readonly Dictionary<long, ProfileEvent> _profileEvents;
-
-        public ProfileEventCollectionBuilder()
-        {
-            _profileEvents = new Dictionary<long, ProfileEvent>();
-        }
-
-        public long StopwatchFrequency { get; set; }
-
-        public void Add(ProfileEvent @event)
-        {
-            _profileEvents.Add(@event.Id, @event);
-        }
-
-        public void AddStart(long timestamp, long id, int threadId, long parentId, string name)
-        {
-            var profEvent = new ProfileEvent()
-            {
-                ThreadId = threadId,
-                ParentId = parentId,
-                Id = id,
-                Name = name,
-            };
-
-            _profileEvents.Add(id, profEvent);
-        }
-
-        public bool SetEnd(long timestamp, long id)
-        {
-            if (_profileEvents.TryGetValue(id, out var profEvent))
-            {
-                profEvent.End = timestamp;
-                return true;
-            }
-
-            return false;
-        }
-
-        public ProfileEventCollection Build()
-        {
-            foreach (var (id, evt) in _profileEvents)
-            {
-                if (evt.Parent != null)
-                    continue;
-
-                if (_profileEvents.TryGetValue(evt.ParentId, out var parent))
+                var map = new Dictionary<ProfileEvent, D3FlameObject>();
+                long finalEnd = long.MinValue;
+                foreach (var evt in collection.GetEvents(thread.Id))
                 {
-                    evt.Parent = parent;
+                    var flame = new D3FlameObject()
+                    {
+                        Name = evt.Name,
+                        Value = evt.Duration.Ticks,
+                    };
+
+                    map.Add(evt, flame);
+
+                    if (evt.End > finalEnd)
+                    {
+                        finalEnd = evt.End;
+                    }
                 }
+                
+                foreach (var (evt, flame) in map)
+                {
+                    if (evt.Parent == null)
+                    {
+                        root.Children.Add(flame);
+                    }
+                    else
+                    {
+                        var parentFlame = map[evt.Parent];
+                        parentFlame.Children.Add(flame);
+                    }
+                }
+
+                root.Value = StopwatchCalculator.ToTimeSpan(startTs, finalEnd, frequency).Ticks;
+
+                string dataJsonPath = Path.Combine(AppContext.BaseDirectory, "data.json");
+                using var dataFile = File.Create(dataJsonPath);
+                await JsonSerializer.SerializeAsync(dataFile, root, new JsonSerializerOptions() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                Console.WriteLine($"Wrote to {dataJsonPath}");
             }
-
-            var items = new ProfileEventCollection(_profileEvents.Values);
-            return items;
         }
-    }
-
-    class ThreadSummaryData
-    {
-        public int Id { get; set; }
-
-        public long EventCount { get; set; }
-    }
-
-    enum ProfileEventType
-    {
-        StartMethod,
-        EndMethod
-    }
-
-    class ProfileEvent
-    {
-        public ProfileEvent()
-        {
-
-        }
-
-        public int ThreadId { get; set; }
-
-        public long Id { get; set; }
-
-        public long ParentId { get; set; }
-
-        public string Name { get; set; }
-
-        public long Start { get; set; }
-
-        public long End { get; set; }
-
-        public ProfileEvent Parent { get; set; }
     }
 }

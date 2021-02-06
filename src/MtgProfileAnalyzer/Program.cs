@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using McMaster.Extensions.CommandLineUtils;
 
 namespace MtgProfileAnalyzer
 {
@@ -11,34 +12,104 @@ namespace MtgProfileAnalyzer
     {
         async static Task<int> Main(string[] args)
         {
-            if (args.Length == 0)
+            var app = new CommandLineApplication();
+            app.HelpOption();
+            app.Command("analyze", cmd =>
             {
-                Console.Error.WriteLine("Specify an input file");
-                return 1;
-            }
+                var filesArg = cmd.Argument("files", "Raw profiling input files to process", true).IsRequired();
 
-            int exitCode = 0;
-            foreach (var arg in args)
+                cmd.OnExecuteAsync(async ct =>
+                {
+                    int exitCode = 0;
+                    foreach (var filePath in filesArg.Values)
+                    {
+                        if (!File.Exists(filePath))
+                        {
+                            Console.Error.WriteLine($"File does not exist: {filePath}");
+                            exitCode = 1;
+                            continue;
+                        }
+
+                        try
+                        {
+                            await AnalyzeFile(filePath);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.Error.WriteLine($"Error processing file '{filePath}': {e}");
+                            exitCode = 1;
+                        }
+                    }
+
+                    return exitCode;
+                });
+            });
+
+            app.Command("watch", cmd =>
             {
-                string filePath = arg;
-                if (!File.Exists(filePath))
-                {
-                    exitCode = 1;
-                    continue;
-                }
+                var dirARg = cmd.Argument("directory", "A directory to watch for new files to process").IsRequired();
 
-                try
+                cmd.OnExecuteAsync(async ct =>
                 {
-                    await AnalyzeFile(filePath);
-                }
-                catch (Exception e)
-                {
-                    Console.Error.WriteLine($"Error processing file '{filePath}': {e}");
-                    exitCode = 1;
-                }
-            }
+                    string directory = dirARg.Value;
+                    if (!Directory.Exists(directory))
+                    {
+                        Console.Error.WriteLine($"Directory does not exist {directory}");
+                        return 1;
+                    }
 
-            return exitCode;
+                    Console.WriteLine($"Watching {directory} for changes...");
+                    using var watch = new FileSystemWatcher(directory, "*.bin");
+
+                    var pending = new Queue<(string filePath, int retry)>();
+                    while (true)
+                    {
+                        var info = watch.WaitForChanged(WatcherChangeTypes.All, 2_000);
+                        string inputFilePath;
+                        int retry;
+                        if (info.TimedOut)
+                        {
+                            if (!pending.TryDequeue(out var item))
+                            {
+                                continue;
+                            }
+
+                            inputFilePath = item.filePath;
+                            retry = item.retry;
+                        }
+                        else
+                        {
+                            if (info.ChangeType == WatcherChangeTypes.Deleted)
+                            {
+                                continue;
+                            }
+
+                            inputFilePath = Path.Combine(directory, info.Name);
+                            retry = 0;
+                        }
+
+                        try
+                        {
+                            using var fs = File.OpenRead(inputFilePath);
+                        }
+                        catch (Exception)
+                        {
+                            if (retry < 3)
+                            {
+                                pending.Enqueue((inputFilePath, retry + 1));
+                            }
+
+                            continue;
+                        }
+
+                        string name = Path.GetFileName(inputFilePath);
+                        Console.WriteLine($"Analyzing {name}");
+                        await AnalyzeFile(inputFilePath);
+                    }
+                });
+            });
+
+            return await app.ExecuteAsync(args);
         }
 
         private static async Task AnalyzeFile(string inputFilePath)

@@ -179,7 +179,17 @@ namespace MtgProfileAnalyzer
             Console.WriteLine($"Read {records} records.");
 
             var collection = builder.Build();
-            var ssFormat = collection.ToSpeedscopeFormat();
+            var (ssFormat, summary) = collection.ToSpeedscopeFormat();
+
+            if (summary.DroppedEvents > 0)
+            {
+                Console.WriteLine($"Dropped {summary.DroppedEvents} events");
+            }
+
+            if (summary.FixedUnbalancedOpenEvents > 0)
+            {
+                Console.WriteLine($"Fixed {summary.FixedUnbalancedOpenEvents} unbalanced events");
+            }
 
             string outputFileName = ssFormat.Name ?? "data";
             outputFileName = $"{outputFileName}.speedscope.json";

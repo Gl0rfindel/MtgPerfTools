@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using MtgProfileAnalyzer.Export.Speedscope;
 
 namespace MtgProfileAnalyzer
 {
     internal static class Exporter
     {
-        public static SpeedscopeFile ToSpeedscopeFormat(this ProfileEventCollection collection)
+        public static (SpeedscopeFile, ProcessingSummary) ToSpeedscopeFormat(this ProfileEventCollection collection)
         {
             var session = collection.Session;
             var file = new SpeedscopeFile();
@@ -17,6 +15,8 @@ namespace MtgProfileAnalyzer
             {
                 file.Name = Path.GetFileNameWithoutExtension(session.File);
             }
+
+            var summary = new ProcessingSummary();
 
             foreach (var threadData in collection.ThreadSummaries)
             {
@@ -32,6 +32,7 @@ namespace MtgProfileAnalyzer
 
                 file.Profiles.Add(profile);
 
+                var openEvents = new Dictionary<long, (int index, ProfileEvent)>();
                 var frameLookup = new Dictionary<string, (int index, Frame frame)>();
                 double maxValue = -1;
                 foreach (var profileEvent in profileEvents)
@@ -50,12 +51,22 @@ namespace MtgProfileAnalyzer
                         frameLookup.Add(profileEvent.Name, frameInfo);
                     }
 
-                    IEvent ssEvent = profileEvent.EventType switch
+                    IEvent ssEvent;
+                    if (profileEvent.EventType == ProfileEventType.StartMethod)
                     {
-                        ProfileEventType.StartMethod => new OpenEvent() { At = profileEvent.Offset.TotalMilliseconds, Frame = frameInfo.index },
-                        ProfileEventType.EndMethod => new CloseEvent() { At = profileEvent.Offset.TotalMilliseconds, Frame = frameInfo.index },
-                        _ => throw new ArgumentException("Invalid event type"),
-                    };
+                        ssEvent = new OpenEvent() { At = profileEvent.Offset.TotalMilliseconds, Frame = frameInfo.index };
+                        openEvents.Add(profileEvent.Id, (frameInfo.index, profileEvent));
+                    }
+                    else if (profileEvent.EventType == ProfileEventType.EndMethod)
+                    {
+                        ssEvent = new CloseEvent() { At = profileEvent.Offset.TotalMilliseconds, Frame = frameInfo.index };
+                        openEvents.Remove(profileEvent.Id);
+                    }
+                    else
+                    {
+                        summary.DroppedEvents++;
+                        continue;
+                    }
 
                     profile.Events.Add(ssEvent);
 
@@ -66,9 +77,24 @@ namespace MtgProfileAnalyzer
                 }
 
                 profile.EndValue = maxValue;
+
+                if (openEvents.Count > 0)
+                {
+                    summary.FixedUnbalancedOpenEvents += openEvents.Count;
+                    foreach (var (id, (index, frameInfo)) in openEvents)
+                    {
+                        var fakeCloseEvent = new CloseEvent() 
+                        { 
+                            At = maxValue, 
+                            Frame = index 
+                        };
+
+                        profile.Events.Add(fakeCloseEvent);
+                    }
+                }
             }
 
-            return file;
+            return (file, summary);
         }
     }
 }

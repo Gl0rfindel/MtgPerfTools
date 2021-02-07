@@ -71,6 +71,7 @@ namespace MtgInstrumenter
                     // also need a seekable stream for output... sigh
                     using var outputMs = new MemoryStream();
                     asmDef.Write(outputMs);
+                    outputMs.Seek(0, SeekOrigin.Begin);
 
                     using var outputStream = outputEntry.Open();
                     outputMs.CopyTo(outputStream);

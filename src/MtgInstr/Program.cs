@@ -23,8 +23,6 @@ namespace MtgInstrumenter
 
             cli.OnExecute(() =>
             {
-                // TODO: Read zips.
-                // TODO: Generate mods txt
                 var processors = new List<InstrumentationProcessor>();
                 var directories = new HashSet<string>();
                 foreach (var path in paths.Values)

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -124,7 +125,10 @@ namespace MtgInstrumenter
             var il = method.Body.GetILProcessor();
 
             var firstInstruction = method.Body.Instructions.First();
-            var loadstr = il.Create(OpCodes.Ldstr, method.FullName);
+
+            string identifier = GetMethodIdentifier(method);
+            var loadstr = il.Create(OpCodes.Ldstr, identifier);
+
             il.InsertBefore(firstInstruction, loadstr);
             il.InsertAfter(loadstr, il.Create(OpCodes.Call, enterRef));
 
@@ -191,6 +195,43 @@ namespace MtgInstrumenter
                 instructions.Add(Instruction.Create(OpCodes.Ret));
                 return lastLd;
             }
+        }
+
+        private static string GetMethodIdentifier(MethodDefinition method)
+        {
+            var builder = new StringBuilder();
+            builder
+                // this is short, but many modders have vague or weird assembly names, 
+                // might need to pass some kind of 'context' down in here
+                .Append(method.DeclaringType.Module.Assembly.Name.Name) 
+                .Append("::")
+                .Append(method.DeclaringType.FullName)
+                .Append("::")
+                .Append(method.Name);
+
+            builder.Append("(");
+
+            // copied mostly from the cecil code
+            // but abbreviated type names.
+            if (method.HasParameters)
+            {
+                for (int i = 0; i < method.Parameters.Count; i++)
+                {
+                    var parameter = method.Parameters[i];
+                    if (i > 0)
+                        builder.Append(",");
+
+                    if (parameter.ParameterType.IsSentinel)
+                        builder.Append("...,");
+
+                    builder.Append(parameter.ParameterType.Name);
+                }
+            }
+
+            builder.Append(")");
+
+            string identifier = builder.ToString();
+            return identifier;
         }
     }
 }

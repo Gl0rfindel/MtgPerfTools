@@ -25,5 +25,16 @@ namespace MtgProfilerTools
             string fileName = $"mtg_profile_data_{ts}.bin";
             return Path.Combine(DataDirectory, fileName);
         }
+
+        public void WriteError(string message)
+        {
+            try
+            {
+                string errorFile = "mtg_profiler_error.txt";
+                string ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                File.AppendAllText(errorFile, $"[{ts}] {message}\n");
+            }
+            catch { }
+        }
     }
 }

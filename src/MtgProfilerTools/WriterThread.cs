@@ -91,6 +91,7 @@ namespace MtgProfilerTools
 
                                 if (currentStream.Length > threadData.MaxFileSize)
                                 {
+                                    streamProvider.WriteError("Exceeded max file size");
                                     writer.Close();
                                     currentStream.Close();
                                     Cleanup(currentStream);
@@ -100,8 +101,9 @@ namespace MtgProfilerTools
                                         currentStream = streamProvider.OpenNewStream();
                                         writer = InitializeWriter(currentStream);
                                     }
-                                    catch
+                                    catch (Exception e)
                                     {
+                                        streamProvider.WriteError($"Error opening new stream: {e}");
                                         return;
                                     }
                                 }

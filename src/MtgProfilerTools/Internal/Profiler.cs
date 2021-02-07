@@ -11,9 +11,7 @@ namespace MtgProfilerTools.Internal
     /// </summary>
     public class Profiler
     {
-        private static bool IsEnabled = false;
-
-        private static Stream OutpuStream;
+        private static volatile bool IsEnabled = false;
 
         private static WriterThread WriterThread;
 
@@ -24,27 +22,7 @@ namespace MtgProfilerTools.Internal
 
         static Profiler()
         {
-            IsEnabled = false;
-            string dataDir = Environment.GetEnvironmentVariable("MTG_PROFILER_DATA_DIR");
-            if (!string.IsNullOrEmpty(dataDir))
-            {
-                try
-                {
-                    if (!Directory.Exists(dataDir))
-                    {
-                        Directory.CreateDirectory(dataDir);
-                    }
-
-                    string ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                    string fileName = $"mtg_profile_data_{ts}.bin";
-                    string outputPath = Path.Combine(dataDir, fileName);
-                    OutpuStream = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite);
-                    WriterThread = new WriterThread(OutpuStream);
-                    WriterThread.Run();
-                    IsEnabled = true;
-                }
-                catch { }
-            }
+            IsEnabled = SetupThread();
         }
 
         public static void Enter(string name)
@@ -78,6 +56,55 @@ namespace MtgProfilerTools.Internal
 
             var profileEvent = new RawProfileEvent(Thread.CurrentThread.ManagedThreadId, parentId, id, Stopwatch.GetTimestamp(), ProfileEventType.EndMethod, string.Empty);
             WriterThread.Enqueue(profileEvent);
+        }
+
+        /// <summary>
+        /// Internally disable when we are broken
+        /// </summary>
+        internal static void Disable()
+        {
+            IsEnabled = false;
+        }
+
+        private static bool SetupThread()
+        {
+            string dataDir = Environment.GetEnvironmentVariable("MTGPROFILER_DATADIR");
+            if (!string.IsNullOrEmpty(dataDir))
+            {
+                try
+                {
+                    string maxFileSizeSetting = Environment.GetEnvironmentVariable("MTGPROFILER_MAXFILESIZE");
+                    long maxFileSize = 100;
+                    if (string.IsNullOrEmpty(maxFileSizeSetting))
+                    {
+                        if (int.TryParse(maxFileSizeSetting, out int value))
+                        {
+                            maxFileSize = value;
+                        }
+                    }
+
+                    if (maxFileSize <= 0)
+                    {
+                        return false;
+                    }
+
+                    // covert from MB
+                    maxFileSize = maxFileSize * 1024 * 1024;
+
+                    if (!Directory.Exists(dataDir))
+                    {
+                        Directory.CreateDirectory(dataDir);
+                    }
+
+                    var streamProvider = new OutputStreamProvider(dataDir);
+                    WriterThread = new WriterThread(streamProvider, maxFileSize);
+                    WriterThread.Run();
+                    return true;
+                }
+                catch { }
+            }
+
+            return false;
         }
     }
 }

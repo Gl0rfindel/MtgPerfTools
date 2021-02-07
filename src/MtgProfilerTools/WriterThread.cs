@@ -12,9 +12,10 @@ namespace MtgProfilerTools
         private readonly object _lock;
         private readonly Queue<RawProfileEvent> _entries = new Queue<RawProfileEvent>();
         private readonly Thread _thread;
-        private readonly Stream _outputStream;
+        private readonly OutputStreamProvider _streamProvider;
+        private readonly long _maxFileSize;
 
-        public WriterThread(Stream outputStream)
+        public WriterThread(OutputStreamProvider streamProvider, long maxFileSize)
         {
             _lock = new object();
             _thread = new Thread(new ParameterizedThreadStart(Run))
@@ -23,7 +24,8 @@ namespace MtgProfilerTools
                 IsBackground = true,
             };
 
-            _outputStream = outputStream;
+            _streamProvider = streamProvider;
+            _maxFileSize = maxFileSize;
         }
 
         public void Run()
@@ -32,7 +34,8 @@ namespace MtgProfilerTools
             {
                 Lock = _lock,
                 Queue = _entries,
-                OutputStream = _outputStream
+                StreamProvider = _streamProvider,
+                MaxFileSize = _maxFileSize
             };
 
             _thread.Start(data);
@@ -52,38 +55,83 @@ namespace MtgProfilerTools
             ThreadData threadData = (ThreadData)state;
             object locker = threadData.Lock;
             var queue = threadData.Queue;
-            var output = threadData.OutputStream;
-            WriteDataHeader(output);
-            output.Flush();
-            var writer = new BinaryWriter(output, Encoding.UTF8);
-            while (true)
+            var streamProvider = threadData.StreamProvider;
+
+            Stream currentStream = null;
+            BinaryWriter writer = null;
+
+            try
             {
+                currentStream = streamProvider.OpenNewStream();
+                writer = InitializeWriter(currentStream);
+
                 lock (locker)
                 {
-                    while (queue.Count == 0)
+                    while (true)
                     {
-                        Monitor.Wait(locker);
-                    }
-
-                    while (queue.Count > 0)
-                    {
-                        try
+                        while (queue.Count == 0)
                         {
-                            var entry = queue.Dequeue();
-
-                            writer.Write(entry.ThreadId);
-                            writer.Write(entry.ParentId);
-                            writer.Write(entry.ActivityId);
-                            writer.Write(entry.Timestamp);
-                            writer.Write((int)entry.EventType);
-                            writer.Write(entry.Name);
-
-                            writer.Flush();
+                            Monitor.Wait(locker);
                         }
-                        catch { }
+
+                        while (queue.Count > 0)
+                        {
+                            try
+                            {
+                                var entry = queue.Dequeue();
+
+                                writer.Write(entry.ThreadId);
+                                writer.Write(entry.ParentId);
+                                writer.Write(entry.ActivityId);
+                                writer.Write(entry.Timestamp);
+                                writer.Write((int)entry.EventType);
+                                writer.Write(entry.Name);
+
+                                writer.Flush();
+
+                                if (currentStream.Length > threadData.MaxFileSize)
+                                {
+                                    writer.Close();
+                                    currentStream.Close();
+                                    Cleanup(currentStream);
+
+                                    try
+                                    {
+                                        currentStream = streamProvider.OpenNewStream();
+                                        writer = InitializeWriter(currentStream);
+                                    }
+                                    catch
+                                    {
+                                        return;
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
                     }
                 }
             }
+            finally
+            {
+                Internal.Profiler.Disable();
+                try
+                {
+                    if (writer != null)
+                        writer.Close();
+
+                    if (currentStream != null)
+                        currentStream.Close();
+                }
+                catch { }
+            }
+        }
+
+        private static BinaryWriter InitializeWriter(Stream outputStream)
+        {
+            WriteDataHeader(outputStream);
+            outputStream.Flush();
+            var writer = new BinaryWriter(outputStream, Encoding.UTF8);
+            return writer;
         }
 
         private static void WriteDataHeader(Stream stream)
@@ -100,13 +148,27 @@ namespace MtgProfilerTools
             stream.Write(header, 0, header.Length);
         }
 
+        private static void Cleanup(Stream stream)
+        {
+            if (stream is FileStream fs)
+            {
+                try
+                {
+                    File.Delete(fs.Name);
+                }
+                catch { }
+            }
+        }
+
         private class ThreadData
         {
             public object Lock;
 
             public Queue<RawProfileEvent> Queue;
 
-            public Stream OutputStream;
+            public OutputStreamProvider StreamProvider;
+
+            public long MaxFileSize;
         }
     }
 }

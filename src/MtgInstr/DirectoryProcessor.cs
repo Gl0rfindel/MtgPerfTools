@@ -19,7 +19,7 @@ namespace MtgInstrumenter
 
         public string DirectoryPath { get; }
 
-        public override string DisplayName => DirectoryPath;
+        public override string DisplayName => Path.GetDirectoryName(DirectoryPath);
 
         public override void ReportItems(IList<string> items)
         {

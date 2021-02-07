@@ -11,6 +11,7 @@ namespace MtgInstrumenter
         static void Main(string[] args)
         {
             var cli = new CommandLineApplication();
+            cli.ResponseFileHandling = ResponseFileHandling.ParseArgsAsLineSeparated;
             cli.HelpOption();
             var paths = cli.Argument("paths", "The input dlls or directories of dlls to instrument", true).IsRequired();
             var outputOption = cli.Option("-o|--output <DIR>", "The directory where output files will be written", CommandOptionType.SingleValue);
@@ -19,7 +20,7 @@ namespace MtgInstrumenter
             //var incAsmOption = cli.Option("-ia|--includeAsm <REGEX>", "", CommandOptionType.MultipleValue);
             var exTypeRegexOption = cli.Option("-xt|--excludeType <REGEX>", "A regular expression used to exclude types for instrumentation.", CommandOptionType.MultipleValue);
             var incTypeRegexOption = cli.Option("-it|--includeType <REGEX>", "A regular expression used to include types for instrumentation.", CommandOptionType.MultipleValue);
-            
+
             cli.OnExecute(() =>
             {
                 // TODO: Read zips.
@@ -85,7 +86,14 @@ namespace MtgInstrumenter
                 };
 
                 var toolsAsm = AssemblyDefinition.ReadAssembly(toolsAsmPath, readerParams);
-                string outputDirectory = outputOption.Value() ?? AppContext.BaseDirectory;
+
+                string outputDirectory = Environment.CurrentDirectory;
+                if (outputOption.HasValue())
+                {
+                    outputDirectory = outputOption.Value();
+                    Console.WriteLine($"Output directory: {outputDirectory}");
+                }
+
                 var toolsContext = new ToolsAssemblyContext(toolsAsm);
 
                 var opts = new InstrumenterOptions();
@@ -100,6 +108,7 @@ namespace MtgInstrumenter
                     ReaderParams = readerParams
                 };
 
+                int success = 0;
                 foreach (var processor in processors)
                 {
                     try
@@ -109,6 +118,8 @@ namespace MtgInstrumenter
                         processor.Process(processingContext);
 
                         Console.WriteLine($"Done processing {processor.DisplayName}");
+
+                        success++;
                     }
                     catch (Exception e)
                     {
@@ -116,6 +127,9 @@ namespace MtgInstrumenter
                         Console.WriteLine($"Error details: {e}");
                     }
                 }
+
+                if (success > 0)
+                    Console.WriteLine($"Successfully processed {success} items");
             });
 
             cli.Execute(args);

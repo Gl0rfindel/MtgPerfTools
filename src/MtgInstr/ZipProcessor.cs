@@ -18,7 +18,7 @@ namespace MtgInstrumenter
 
         public string ZipFile { get; }
 
-        public override string DisplayName => ZipFile;
+        public override string DisplayName => Path.GetFileName(ZipFile);
 
         public override void ReportItems(IList<string> items)
         {

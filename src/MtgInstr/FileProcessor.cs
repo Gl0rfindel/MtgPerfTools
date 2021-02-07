@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Mono.Cecil;
 
@@ -16,7 +17,7 @@ namespace MtgInstrumenter
 
         public string FilePath { get; }
 
-        public override string DisplayName => FilePath;
+        public override string DisplayName => Path.GetFileName(FilePath);
 
         public override void ReportItems(IList<string> items)
         {
@@ -25,11 +26,10 @@ namespace MtgInstrumenter
 
         public override void Process(ProcessingContext context)
         {
-            using (var instrumented = context.Instrumenter.InstrumentFile(FilePath, context.ReaderParams))
-            {
-                string outputDllName = Path.Combine(context.OutputDirectory, Path.GetFileName(FilePath));
-                instrumented.Write(outputDllName);
-            }
+            using var instrumented = context.Instrumenter.InstrumentFile(FilePath, context.ReaderParams);
+            string outputDllName = Path.Combine(context.OutputDirectory, Path.GetFileName(FilePath));
+            instrumented.Write(outputDllName);
+            Console.WriteLine($"Wrote to {outputDllName}");
         }
     }
 }

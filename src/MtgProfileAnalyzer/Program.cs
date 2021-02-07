@@ -51,7 +51,7 @@ namespace MtgProfileAnalyzer
 
                 cmd.OnExecuteAsync(async ct =>
                 {
-                    string watchDirectory = dirARg.Value ?? Environment.GetEnvironmentVariable("MTG_PROFILER_DATA_DIR");
+                    string watchDirectory = dirARg.Value ?? Environment.GetEnvironmentVariable("MTGPROFILER_DATADIR");
                     if (string.IsNullOrEmpty(watchDirectory))
                     {
                         Console.Error.WriteLine("Watch dir was not specified or found in environment variable MTG_PROFILER_DATA_DIR");

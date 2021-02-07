@@ -108,8 +108,16 @@ namespace MtgProfileAnalyzer
                         }
 
                         string name = Path.GetFileName(inputFilePath);
-                        Console.WriteLine($"Analyzing {name}");
-                        string outputFile = await AnalyzeFile(inputFilePath);
+                        try
+                        {
+                            Console.WriteLine($"Analyzing {name}");
+                            string outputFile = await AnalyzeFile(inputFilePath);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"Error processing file {name}");
+                            Console.WriteLine($"Exception details: {e}");
+                        }
                     }
                 });
             });
@@ -119,7 +127,7 @@ namespace MtgProfileAnalyzer
 
         private static async Task<string> AnalyzeFile(string inputFilePath)
         {
-            using var inputFs = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read);
+            using var inputFs = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.SequentialScan);
             using var reader = new BinaryReader(inputFs);
             var header = reader.ReadBytes(64);
             var mtg = header[0..4]; // TODO: Validate

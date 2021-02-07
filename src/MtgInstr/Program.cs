@@ -16,10 +16,10 @@ namespace MtgInstrumenter
             var paths = cli.Argument("paths", "The input dlls or directories of dlls to instrument", true).IsRequired();
             var outputOption = cli.Option("-o|--output <DIR>", "The directory where output files will be written", CommandOptionType.SingleValue);
             var refPathsOption = cli.Option("-r|--reference <DIR>", "Directory to search for references", CommandOptionType.MultipleValue);
-            //var exAsmOption = cli.Option("-xa|--excludeAsm <REGEX>", "", CommandOptionType.MultipleValue);
-            //var incAsmOption = cli.Option("-ia|--includeAsm <REGEX>", "", CommandOptionType.MultipleValue);
-            var exTypeRegexOption = cli.Option("-xt|--excludeType <REGEX>", "A regular expression used to exclude types for instrumentation.", CommandOptionType.MultipleValue);
-            var incTypeRegexOption = cli.Option("-it|--includeType <REGEX>", "A regular expression used to include types for instrumentation.", CommandOptionType.MultipleValue);
+            //var exAsmOption = cli.Option("-xa|--exclude-asm <REGEX>", "", CommandOptionType.MultipleValue);
+            //var incAsmOption = cli.Option("-ia|--include-asm <REGEX>", "", CommandOptionType.MultipleValue);
+            var exTypeRegexOption = cli.Option("-xt|--exclude-type <REGEX>", "A regular expression used to exclude types for instrumentation.", CommandOptionType.MultipleValue);
+            var incTypeRegexOption = cli.Option("-it|--include-type <REGEX>", "A regular expression used to include types for instrumentation.", CommandOptionType.MultipleValue);
 
             cli.OnExecute(() =>
             {
@@ -66,7 +66,7 @@ namespace MtgInstrumenter
                 }
 
 #if DEBUG
-                string resolverPaths = Environment.GetEnvironmentVariable("MTG_INSTR_RESOLVERPATH");
+                string resolverPaths = Environment.GetEnvironmentVariable("MTGINSTR_RESOLVERPATH");
                 if (resolverPaths != null)
                 {
                     Console.WriteLine("Adding debugging assembly resolver logic");

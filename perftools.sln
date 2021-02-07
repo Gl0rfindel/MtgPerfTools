@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{EE64BF70-5EF2-45CA-8EC5-0F11C4AE15ED}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MtgInstrumenter", "src\MtgInstr\MtgInstrumenter.csproj", "{B34C9A4D-402E-4729-A6DD-E67D7438AA75}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MtgInstr", "src\MtgInstr\MtgInstr.csproj", "{B34C9A4D-402E-4729-A6DD-E67D7438AA75}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MtgProfilerTools", "src\MtgProfilerTools\MtgProfilerTools.csproj", "{CE5FDF23-A129-4AD4-B787-C4EE12E083D7}"
 EndProject
@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{B58B88D2-6
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MtgProfilerTools.Test", "test\MtgProfilerTools.Test\MtgProfilerTools.Test.csproj", "{8A21DD1F-DD80-4049-8B45-A20FCBA7C139}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MtgProfileAnalyzer", "src\MtgProfileAnalyzer\MtgProfileAnalyzer.csproj", "{382F3C70-B375-4BFA-817C-594D94A01741}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MtgProfileAnalyzer", "src\MtgProfileAnalyzer\MtgProfileAnalyzer.csproj", "{382F3C70-B375-4BFA-817C-594D94A01741}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

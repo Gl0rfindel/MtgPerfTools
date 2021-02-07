@@ -30,9 +30,15 @@ namespace MtgInstrumenter
             }
         }
 
-        public override void Process(ProcessingContext options)
+        public override void Process(ProcessingContext context)
         {
-            Console.WriteLine($"Skipping {DirectoryPath}. Not implemented.");
+            _files = Directory.GetFiles(DirectoryPath, "*.dll");
+
+            foreach (var file in _files)
+            {
+                var fileProc = new FileProcessor(file);
+                fileProc.Process(context);
+            }
         }
     }
 }

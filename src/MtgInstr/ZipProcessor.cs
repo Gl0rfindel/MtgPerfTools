@@ -25,12 +25,12 @@ namespace MtgInstrumenter
             items.Add(ZipFile);
         }
 
-        public override void Process(ProcessingContext options)
+        public override void Process(ProcessingContext context)
         {
             using var inputZipFs = File.OpenRead(ZipFile);
             using var inputArchive = new ZipArchive(inputZipFs);
 
-            string outputFile = Path.Combine(options.OutputDirectory, Path.GetFileName(ZipFile));
+            string outputFile = Path.Combine(context.OutputDirectory, Path.GetFileName(ZipFile));
             using var outputZipFs = new FileStream(outputFile, FileMode.Create);
             using var outputArchive = new ZipArchive(outputZipFs, ZipArchiveMode.Create);
 
@@ -65,7 +65,7 @@ namespace MtgInstrumenter
                     entryStream.CopyTo(inputMs);
                     inputMs.Seek(0, SeekOrigin.Begin);
 
-                    using var asmDef = options.Instrumenter.InstrumentStream(inputMs, options.ReaderParams);
+                    using var asmDef = context.Instrumenter.InstrumentStream(inputMs, context.ReaderParams);
                     var outputEntry = outputArchive.CreateEntry(entry.FullName);
 
                     // also need a seekable stream for output... sigh
@@ -87,26 +87,9 @@ namespace MtgInstrumenter
 
         private static string GetPrimaryDllName(ZipArchiveEntry metadataEntry)
         {
-            string line;
-            using var reader = new StreamReader(metadataEntry.Open());
-            while ((line = reader.ReadLine()) != null)
-            {
-                if (line.StartsWith("#"))
-                    continue;
-
-                if (line.StartsWith("DLL:", StringComparison.OrdinalIgnoreCase))
-                {
-                    string[] parts = line.Split();
-                    if (parts.Length != 2)
-                    {
-                        return null;
-                    }
-
-                    return parts[1];
-                }
-            }
-
-            return null;
+            using var metadataStream = metadataEntry.Open();
+            string dllName = ModMetadataHelper.GetMainDllName(metadataStream);
+            return dllName;
         }
     }
 }

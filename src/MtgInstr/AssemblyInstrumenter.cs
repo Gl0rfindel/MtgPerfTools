@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Mono.Cecil;
@@ -41,15 +42,26 @@ namespace MtgInstrumenter
 
         public ToolsAssemblyContext ToolsContext { get; }
 
-        public AssemblyDefinition InstrumentAssembly(string inputDll, ReaderParameters readerParams)
+        public AssemblyDefinition InstrumentFile(string inputDll, ReaderParameters readerParams)
         {
             var asmDefinition = AssemblyDefinition.ReadAssembly(inputDll, readerParams);
+            ProcessAssembly(asmDefinition);
+            return asmDefinition;
+        }
+
+        public AssemblyDefinition InstrumentStream(Stream inputStream, ReaderParameters readerParams)
+        {
+            var asmDefinition = AssemblyDefinition.ReadAssembly(inputStream, readerParams);
+            ProcessAssembly(asmDefinition);
+            return asmDefinition;
+        }
+
+        private void ProcessAssembly(AssemblyDefinition asmDefinition)
+        {
             foreach (var module in asmDefinition.Modules)
             {
                 ProcessModule(module);
             }
-
-            return asmDefinition;
         }
 
         private void ProcessModule(ModuleDefinition moduleDefinition)

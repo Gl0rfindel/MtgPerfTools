@@ -24,7 +24,7 @@ namespace MtgInstrumenter
             {
                 // TODO: Read zips.
                 // TODO: Generate mods txt
-                var sourceAssemblies = new List<string>();
+                var processors = new List<InstrumentationProcessor>();
                 var directories = new HashSet<string>();
                 foreach (var path in paths.Values)
                 {
@@ -32,20 +32,23 @@ namespace MtgInstrumenter
                     {
                         if (path.EndsWith(".dll"))
                         {
-                            sourceAssemblies.Add(path);
+                            processors.Add(new FileProcessor(path));
                             string dir = Path.GetDirectoryName(Path.GetFullPath(path));
                             directories.Add(dir);
+                        }
+                        else if (path.EndsWith(".zip"))
+                        {
+                            processors.Add(new ZipProcessor(path));
                         }
                     }
                     else if (Directory.Exists(path))
                     {
-                        var files = Directory.GetFiles(path, "*.dll");
-                        sourceAssemblies.AddRange(files);
+                        processors.Add(new DirectoryProcessor(path));
                         directories.Add(path);
                     }
                 }
 
-                if (sourceAssemblies.Count == 0)
+                if (processors.Count == 0)
                 {
                     Console.WriteLine("No assemblies found");
                     return;
@@ -90,18 +93,28 @@ namespace MtgInstrumenter
                 opts.TypeIncludes.AddRange(incTypeRegexOption.Values);
 
                 var instrumenter = new AssemblyInstrumenter(toolsContext, opts);
-
-                foreach (var sourceAssemblyFile in sourceAssemblies)
+                var processingContext = new ProcessingContext()
                 {
-                    Console.WriteLine($"Processing {sourceAssemblyFile}");
+                    OutputDirectory = outputDirectory,
+                    Instrumenter = instrumenter,
+                    ReaderParams = readerParams
+                };
 
-                    using (var instrumented = instrumenter.InstrumentAssembly(sourceAssemblyFile, readerParams))
+                foreach (var processor in processors)
+                {
+                    try
                     {
-                        string outputDllName = Path.Combine(outputDirectory, Path.GetFileName(sourceAssemblyFile));
-                        instrumented.Write(outputDllName);
-                    }
+                        Console.WriteLine($"Processing {processor.DisplayName}");
 
-                    Console.WriteLine($"Done processing {sourceAssemblyFile}");
+                        processor.Process(processingContext);
+
+                        Console.WriteLine($"Done processing {processor.DisplayName}");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Error processing {processor.DisplayName}");
+                        Console.WriteLine($"Error details: {e}");
+                    }
                 }
             });
 
@@ -132,44 +145,6 @@ namespace MtgInstrumenter
             }
 #endif
             throw new InvalidOperationException("Cannot find MtgProfilerTools.dll");
-        }
-    }
-
-    internal class ProcessingOptions
-    {
-        public string OutputDirectory { get; set; }
-    }
-
-    abstract class InstrumentationProcessor
-    {
-        public abstract void Process(ProcessingOptions options);
-    }
-
-    /// <summary>
-    /// Processes s single dll file
-    /// </summary>
-    internal class FileProcessor : InstrumentationProcessor
-    {
-        public FileProcessor(string file)
-        {
-        }
-
-        public override void Process(ProcessingOptions options)
-        {
-        }
-    }
-
-    /// <summary>
-    /// Processes a directory
-    /// </summary>
-    internal class DirectoryProcessor : InstrumentationProcessor
-    {
-        public DirectoryProcessor(string directory)
-        {
-        }
-
-        public override void Process(ProcessingOptions options)
-        {
         }
     }
 }

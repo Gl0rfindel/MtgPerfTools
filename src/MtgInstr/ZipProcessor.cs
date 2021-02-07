@@ -31,7 +31,7 @@ namespace MtgInstrumenter
             using var inputArchive = new ZipArchive(inputZipFs);
 
             string outputFile = Path.Combine(options.OutputDirectory, Path.GetFileName(ZipFile));
-            using var outputZipFs = File.OpenWrite(outputFile);
+            using var outputZipFs = new FileStream(outputFile, FileMode.Create);
             using var outputArchive = new ZipArchive(outputZipFs, ZipArchiveMode.Create);
 
             bool isModZip = false;

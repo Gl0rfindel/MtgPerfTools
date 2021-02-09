@@ -12,7 +12,7 @@ namespace MtgInstrumenter
 {
     internal class AssemblyInstrumenter
     {
-        private readonly List<Regex> _includeTypes, _excludeTypes;
+        private readonly List<Regex> _includeTypes, _excludeTypes, _includeMethods, _excludeMethods;
 
         public AssemblyInstrumenter(ToolsAssemblyContext toolsContext)
             : this(toolsContext, new InstrumenterOptions())
@@ -38,6 +38,18 @@ namespace MtgInstrumenter
             foreach (var inc in options.TypeIncludes)
             {
                 _includeTypes.Add(new Regex(inc));
+            }
+
+            _excludeMethods = new List<Regex>();
+            foreach (var inc in options.MethodExcludes)
+            {
+                _excludeMethods.Add(new Regex(inc));
+            }
+
+            _includeMethods = new List<Regex>();
+            foreach (var inc in options.MethodIncludes)
+            {
+                _includeMethods.Add(new Regex(inc));
             }
         }
 
@@ -113,6 +125,42 @@ namespace MtgInstrumenter
                 {
                     if (!method.HasBody)
                         continue;
+
+                    if (_excludeMethods.Count > 0)
+                    {
+                        bool toExclude = false;
+                        foreach (var ex in _excludeMethods)
+                        {
+                            if (ex.IsMatch(method.Name))
+                            {
+                                toExclude = true;
+                                break;
+                            }
+                        }
+
+                        if (toExclude)
+                        {
+                            continue;
+                        }
+                    }
+
+                    if (_includeMethods.Count > 0)
+                    {
+                        bool toInclude = false;
+                        foreach (var inc in _includeMethods)
+                        {
+                            if (inc.IsMatch(method.Name))
+                            {
+                                toInclude = true;
+                                break;
+                            }
+                        }
+
+                        if (!toInclude)
+                        {
+                            continue;
+                        }
+                    }
 
                     ProcessMethod(method, enterRef, exitRef);
                 }

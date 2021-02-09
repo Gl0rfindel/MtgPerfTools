@@ -11,5 +11,9 @@ namespace MtgInstrumenter
         public List<string> TypeIncludes { get; set; } = new List<string>();
 
         public List<string> TypeExcludes { get; set; } = new List<string>();
+
+        public List<string> MethodExcludes { get; set; } = new List<string>();
+
+        public List<string> MethodIncludes { get; set; } = new List<string>();
     }
 }

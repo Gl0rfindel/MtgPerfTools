@@ -20,6 +20,8 @@ namespace MtgInstrumenter
             //var incAsmOption = cli.Option("-ia|--include-asm <REGEX>", "", CommandOptionType.MultipleValue);
             var exTypeRegexOption = cli.Option("-xt|--exclude-type <REGEX>", "A regular expression used to exclude types for instrumentation.", CommandOptionType.MultipleValue);
             var incTypeRegexOption = cli.Option("-it|--include-type <REGEX>", "A regular expression used to include types for instrumentation.", CommandOptionType.MultipleValue);
+            var exMethodRegexOption = cli.Option("-xm|--exclude-method <REGEX>", "A regular expression used to exclude methods for instrumentation.", CommandOptionType.MultipleValue);
+            var incMethodRegexOption = cli.Option("-im|--include-method <REGEX>", "A regular expression used to include methods for instrumentation.", CommandOptionType.MultipleValue);
 
             cli.OnExecute(() =>
             {
@@ -97,6 +99,8 @@ namespace MtgInstrumenter
                 var opts = new InstrumenterOptions();
                 opts.TypeExcludes.AddRange(exTypeRegexOption.Values);
                 opts.TypeIncludes.AddRange(incTypeRegexOption.Values);
+                opts.MethodExcludes.AddRange(exMethodRegexOption.Values);
+                opts.MethodIncludes.AddRange(incMethodRegexOption.Values);
 
                 var instrumenter = new AssemblyInstrumenter(toolsContext, opts);
                 var processingContext = new ProcessingContext()

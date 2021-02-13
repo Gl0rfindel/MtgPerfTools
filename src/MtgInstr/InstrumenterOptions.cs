@@ -4,16 +4,8 @@ namespace MtgInstrumenter
 {
     internal class InstrumenterOptions
     {
-        public List<string> AssemblyIncludes { get; set; } = new List<string>();
+        public List<string> Excludes { get; set; } = new List<string>();
 
-        public List<string> AssemblyExcludes { get; set; } = new List<string>();
-
-        public List<string> TypeIncludes { get; set; } = new List<string>();
-
-        public List<string> TypeExcludes { get; set; } = new List<string>();
-
-        public List<string> MethodExcludes { get; set; } = new List<string>();
-
-        public List<string> MethodIncludes { get; set; } = new List<string>();
+        public List<string> Includes { get; set; } = new List<string>();
     }
 }

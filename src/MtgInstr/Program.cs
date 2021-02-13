@@ -16,12 +16,8 @@ namespace MtgInstrumenter
             var paths = cli.Argument("paths", "The input dlls or directories of dlls to instrument", true).IsRequired();
             var outputOption = cli.Option("-o|--output <DIR>", "The directory where output files will be written", CommandOptionType.SingleValue);
             var refPathsOption = cli.Option("-r|--reference <DIR>", "Directory to search for references", CommandOptionType.MultipleValue);
-            //var exAsmOption = cli.Option("-xa|--exclude-asm <REGEX>", "", CommandOptionType.MultipleValue);
-            //var incAsmOption = cli.Option("-ia|--include-asm <REGEX>", "", CommandOptionType.MultipleValue);
-            var exTypeRegexOption = cli.Option("-xt|--exclude-type <REGEX>", "A regular expression used to exclude types for instrumentation.", CommandOptionType.MultipleValue);
-            var incTypeRegexOption = cli.Option("-it|--include-type <REGEX>", "A regular expression used to include types for instrumentation.", CommandOptionType.MultipleValue);
-            var exMethodRegexOption = cli.Option("-xm|--exclude-method <REGEX>", "A regular expression used to exclude methods for instrumentation.", CommandOptionType.MultipleValue);
-            var incMethodRegexOption = cli.Option("-im|--include-method <REGEX>", "A regular expression used to include methods for instrumentation.", CommandOptionType.MultipleValue);
+            var exMethodRegexOption = cli.Option("-x|--exclude <REGEX>", "A regular expression used to exclude methods for instrumentation.", CommandOptionType.MultipleValue);
+            var incMethodRegexOption = cli.Option("-i|--include <REGEX>", "A regular expression used to include methods for instrumentation.", CommandOptionType.MultipleValue);
 
             cli.OnExecute(() =>
             {
@@ -97,10 +93,8 @@ namespace MtgInstrumenter
                 var toolsContext = new ToolsAssemblyContext(toolsAsm);
 
                 var opts = new InstrumenterOptions();
-                opts.TypeExcludes.AddRange(exTypeRegexOption.Values);
-                opts.TypeIncludes.AddRange(incTypeRegexOption.Values);
-                opts.MethodExcludes.AddRange(exMethodRegexOption.Values);
-                opts.MethodIncludes.AddRange(incMethodRegexOption.Values);
+                opts.Excludes.AddRange(exMethodRegexOption.Values);
+                opts.Includes.AddRange(incMethodRegexOption.Values);
 
                 var instrumenter = new AssemblyInstrumenter(toolsContext, opts);
                 var processingContext = new ProcessingContext()

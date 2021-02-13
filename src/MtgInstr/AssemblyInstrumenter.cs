@@ -12,7 +12,7 @@ namespace MtgInstrumenter
 {
     internal class AssemblyInstrumenter
     {
-        private readonly List<Regex> _includeTypes, _excludeTypes, _includeMethods, _excludeMethods;
+        private readonly List<Regex> _includeMethods, _excludeMethods;
 
         public AssemblyInstrumenter(ToolsAssemblyContext toolsContext)
             : this(toolsContext, new InstrumenterOptions())
@@ -28,26 +28,14 @@ namespace MtgInstrumenter
                 throw new ArgumentNullException(nameof(options));
             }
 
-            _excludeTypes = new List<Regex>();
-            foreach (var ex in options.TypeExcludes)
-            {
-                _excludeTypes.Add(new Regex(ex));
-            }
-
-            _includeTypes = new List<Regex>();
-            foreach (var inc in options.TypeIncludes)
-            {
-                _includeTypes.Add(new Regex(inc));
-            }
-
             _excludeMethods = new List<Regex>();
-            foreach (var inc in options.MethodExcludes)
+            foreach (var inc in options.Excludes)
             {
                 _excludeMethods.Add(new Regex(inc));
             }
 
             _includeMethods = new List<Regex>();
-            foreach (var inc in options.MethodIncludes)
+            foreach (var inc in options.Includes)
             {
                 _includeMethods.Add(new Regex(inc));
             }
@@ -84,54 +72,19 @@ namespace MtgInstrumenter
 
             foreach (var typeDefinition in moduleDefinition.GetTypes())
             {
-                if (_excludeTypes.Count > 0)
-                {
-                    bool toExclude = false;
-                    foreach (var ex in _excludeTypes)
-                    {
-                        if (ex.IsMatch(typeDefinition.FullName))
-                        {
-                            toExclude = true;
-                            break;
-                        }
-                    }
-
-                    if (toExclude)
-                    {
-                        continue;
-                    }
-                }
-
-                if (_includeTypes.Count > 0)
-                {
-                    bool toInclude = false;
-                    foreach (var inc in _includeTypes)
-                    {
-                        if (inc.IsMatch(typeDefinition.FullName))
-                        {
-                            toInclude = true;
-                            break;
-                        }
-                    }
-
-                    if (!toInclude)
-                    {
-                        continue;
-                    }
-                }
-
-                Console.WriteLine($"Processing {typeDefinition.FullName}");
                 foreach (var method in typeDefinition.Methods)
                 {
                     if (!method.HasBody)
                         continue;
+
+                    string name = $"{typeDefinition.FullName}::{method.Name}";
 
                     if (_excludeMethods.Count > 0)
                     {
                         bool toExclude = false;
                         foreach (var ex in _excludeMethods)
                         {
-                            if (ex.IsMatch(method.Name))
+                            if (ex.IsMatch(name))
                             {
                                 toExclude = true;
                                 break;
@@ -149,7 +102,7 @@ namespace MtgInstrumenter
                         bool toInclude = false;
                         foreach (var inc in _includeMethods)
                         {
-                            if (inc.IsMatch(method.Name))
+                            if (inc.IsMatch(name))
                             {
                                 toInclude = true;
                                 break;
@@ -162,6 +115,7 @@ namespace MtgInstrumenter
                         }
                     }
 
+                    Console.WriteLine($"Processing {name}");
                     ProcessMethod(method, enterRef, exitRef);
                 }
             }

@@ -16,8 +16,8 @@ namespace MtgInstrumenter
             var paths = cli.Argument("paths", "The input dlls or directories of dlls to instrument", true).IsRequired();
             var outputOption = cli.Option("-o|--output <DIR>", "The directory where output files will be written", CommandOptionType.SingleValue);
             var refPathsOption = cli.Option("-r|--reference <DIR>", "Directory to search for references", CommandOptionType.MultipleValue);
-            var exMethodRegexOption = cli.Option("-x|--exclude <REGEX>", "A regular expression used to exclude methods for instrumentation.", CommandOptionType.MultipleValue);
-            var incMethodRegexOption = cli.Option("-i|--include <REGEX>", "A regular expression used to include methods for instrumentation.", CommandOptionType.MultipleValue);
+            var exRegexOption = cli.Option("-x|--exclude <REGEX>", "A regular expression used to exclude methods for instrumentation.", CommandOptionType.MultipleValue);
+            var incRegexOption = cli.Option("-i|--include <REGEX>", "A regular expression used to include methods for instrumentation.", CommandOptionType.MultipleValue);
 
             cli.OnExecute(() =>
             {
@@ -93,8 +93,8 @@ namespace MtgInstrumenter
                 var toolsContext = new ToolsAssemblyContext(toolsAsm);
 
                 var opts = new InstrumenterOptions();
-                opts.Excludes.AddRange(exMethodRegexOption.Values);
-                opts.Includes.AddRange(incMethodRegexOption.Values);
+                opts.Excludes.AddRange(exRegexOption.Values);
+                opts.Includes.AddRange(incRegexOption.Values);
 
                 var instrumenter = new AssemblyInstrumenter(toolsContext, opts);
                 var processingContext = new ProcessingContext()

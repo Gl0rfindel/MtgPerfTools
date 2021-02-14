@@ -115,13 +115,13 @@ namespace MtgInstrumenter
                         }
                     }
 
-                    Console.WriteLine($"Processing {name}");
-                    ProcessMethod(method, enterRef, exitRef);
+                    Console.WriteLine($"Instrumenting {name}");
+                    Instrument(method, enterRef, exitRef);
                 }
             }
         }
 
-        private static void ProcessMethod(MethodDefinition method, MethodReference enterRef, MethodReference exitRef)
+        private static void Instrument(MethodDefinition method, MethodReference enterRef, MethodReference exitRef)
         {
             method.Body.SimplifyMacros();
             var il = method.Body.GetILProcessor();

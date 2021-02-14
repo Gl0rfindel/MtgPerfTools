@@ -13,7 +13,7 @@ namespace MtgProfilerTools.Internal
     {
         private static volatile bool IsEnabled = false;
 
-        private static WriterThread WriterThread;
+        private static EventWriterThread WriterThread;
 
         private static long EventId = 0;
 
@@ -97,7 +97,7 @@ namespace MtgProfilerTools.Internal
                     }
 
                     var streamProvider = new OutputStreamProvider(dataDir);
-                    WriterThread = new WriterThread(streamProvider, maxFileSize);
+                    WriterThread = new EventWriterThread(streamProvider, maxFileSize);
                     WriterThread.Run();
                     return true;
                 }

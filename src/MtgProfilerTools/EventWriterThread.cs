@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace MtgProfilerTools
 {
-    internal sealed class WriterThread
+    internal sealed class EventWriterThread
     {
         private readonly object _lock;
         private readonly Queue<RawProfileEvent> _entries = new Queue<RawProfileEvent>();
@@ -15,12 +15,12 @@ namespace MtgProfilerTools
         private readonly OutputStreamProvider _streamProvider;
         private readonly long _maxFileSize;
 
-        public WriterThread(OutputStreamProvider streamProvider, long maxFileSize)
+        public EventWriterThread(OutputStreamProvider streamProvider, long maxFileSize)
         {
             _lock = new object();
             _thread = new Thread(new ParameterizedThreadStart(Run))
             {
-                Name = "MtgProfilerWriterThread",
+                Name = $"MtgProfiler{nameof(EventWriterThread)}",
                 IsBackground = true,
             };
 

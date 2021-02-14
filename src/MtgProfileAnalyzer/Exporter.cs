@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using MtgProfileAnalyzer.Export.Speedscope;
 
 namespace MtgProfileAnalyzer
@@ -81,7 +82,7 @@ namespace MtgProfileAnalyzer
                 if (openEvents.Count > 0)
                 {
                     summary.FixedUnbalancedOpenEvents += openEvents.Count;
-                    foreach (var (id, (index, frameInfo)) in openEvents)
+                    foreach (var (id, (index, frameInfo)) in openEvents.OrderByDescending(kvp => kvp.Value.Item2.Offset))
                     {
                         var fakeCloseEvent = new CloseEvent() 
                         { 
